@@ -70,7 +70,7 @@ func NewQuery() (*Query, error) {
 	return q, nil
 }
 
-func (q *Query) GetIndex() string {
+func (q *Query) Index() string {
 	// TODO: assumes that Logstash rotates index daily
 	var indices []string
 	end := q.end.Truncate(time.Hour*24).AddDate(0, 0, 1)
@@ -82,7 +82,7 @@ func (q *Query) GetIndex() string {
 	return strings.Join(indices, ",")
 }
 
-func (q *Query) GetQuery() elastic.Query {
+func (q *Query) Query() elastic.Query {
 	andFilter := elastic.NewAndFilter(
 		elastic.NewRangeFilter("@timestamp").
 			From(q.start.Unix() * 1000).
@@ -97,8 +97,8 @@ func (q *Query) GetQuery() elastic.Query {
 
 func (q *Query) Search(client *elastic.Client) (*elastic.SearchResult, error) {
 	return client.Search().
-		Index(q.GetIndex()).
-		Query(q.GetQuery()).
+		Index(q.Index()).
+		Query(q.Query()).
 		Sort("@timestamp", true).
 		From(0).Size(q.numResults).
 		Pretty(true).
