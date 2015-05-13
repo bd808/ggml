@@ -19,28 +19,37 @@ import (
 	"gopkg.in/alecthomas/kingpin.v1"
 	"log"
 	"os"
+	"regexp"
 )
 
 const (
-	Version            = "0.0.1"
-	DefaultURL         = "http://127.0.0.1:9200"
-	DefaultNumResults  = "100"
-	DefaultQuery       = "*"
-	DefaultDuration    = "15m"
-	DefaultIndexFormat = "logstash-%Y.%m.%d"
+	Version             = "0.0.1"
+	DefaultURL          = "http://127.0.0.1:9200"
+	DefaultNumResults   = "100"
+	DefaultQuery        = "*"
+	DefaultDuration     = "15m"
+	DefaultIndexFormat  = "logstash-%Y.%m.%d"
+	DefaultOutputFormat = "{@timestamp} {host} {type} {level}: {message}"
+	OutputRE            = "{([^}]+)}"
 )
 
 var (
-	urlFlag         = kingpin.Flag("url", "Server URL").Short('u').Default(DefaultURL).OverrideDefaultFromEnvar("GGML_URL").URL()
-	queryFlag       = kingpin.Flag("query", "Elasticsearch query string").Short('q').Default(DefaultQuery).String()
-	filterFlag      = kingpin.Flag("filter", "Search filter").Short('f').Strings()
-	startFlag       = kingpin.Flag("start", "Oldest timestamp to match").String()
-	endFlag         = kingpin.Flag("end", "Newest timestamp to match").String()
-	durationFlag    = kingpin.Flag("duration", "Width of timestamp window").Short('d').Default(DefaultDuration).Duration()
-	numResultsFlag  = kingpin.Flag("num", "Number of results to fetch").Short('n').Default(DefaultNumResults).Int()
-	indexFormatFlag = kingpin.Flag("index-format", "Index name format").Default(DefaultIndexFormat).String()
-	verboseFlag     = kingpin.Flag("verbose", "Enable verbose mode").Default("false").Bool()
-	debugFlag       = kingpin.Flag("debug", "Enable debug mode").Default("false").Bool()
+	urlFlag = kingpin.Flag("url", "Server URL").Short('u').Default(DefaultURL).OverrideDefaultFromEnvar("GGML_URL").URL()
+
+	queryFlag  = kingpin.Flag("query", "Elasticsearch query string").Short('q').Default(DefaultQuery).String()
+	filterFlag = kingpin.Flag("filter", "Search filter").Short('f').Strings()
+
+	startFlag    = kingpin.Flag("start", "Oldest timestamp to match").String()
+	endFlag      = kingpin.Flag("end", "Newest timestamp to match").String()
+	durationFlag = kingpin.Flag("duration", "Width of timestamp window").Short('d').Default(DefaultDuration).Duration()
+
+	numResultsFlag = kingpin.Flag("num", "Number of results to fetch").Short('n').Default(DefaultNumResults).Int()
+
+	indexFormatFlag  = kingpin.Flag("index-format", "Index name format").Default(DefaultIndexFormat).OverrideDefaultFromEnvar("GGML_INDEX_FORMAT").String()
+	outputFormatFlag = kingpin.Flag("output-format", "Output format").Short('o').Default(DefaultOutputFormat).OverrideDefaultFromEnvar("GGML_OUTPUT").String()
+
+	verboseFlag = kingpin.Flag("verbose", "Enable verbose mode").Default("false").Bool()
+	debugFlag   = kingpin.Flag("debug", "Enable debug mode").Default("false").Bool()
 )
 
 func main() {
@@ -76,21 +85,25 @@ func main() {
 	res, err := query.Search(client)
 	exitIfErr(err)
 
+	re, err := regexp.Compile(OutputRE)
+	exitIfErr(err)
+
 	if res.Hits != nil {
 		for _, hit := range res.Hits.Hits {
 			var event map[string]interface{}
 			err := json.Unmarshal(*hit.Source, &event)
-			exitIfErr(err)
-
-			// TODO: make this user selectable
-			fmt.Printf("%s %s %s %v: %s\n",
-				event["@timestamp"],
-				event["host"],
-				event["type"],
-				event["level"],
-				event["message"])
+			if err == nil {
+				fmt.Println(re.ReplaceAllStringFunc(*outputFormatFlag,
+					func(m string) string {
+						parts := re.FindStringSubmatch(m)
+						val, ok := event[parts[1]]
+						if ok {
+							return fmt.Sprintf("%v", val)
+						} else {
+							return m
+						}
+					}))
+			}
 		}
-	} else {
-		fmt.Printf("No events found\n")
 	}
 }
