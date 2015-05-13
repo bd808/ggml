@@ -36,8 +36,9 @@ const (
 var (
 	urlFlag = kingpin.Flag("url", "Server URL").Short('u').Default(DefaultURL).OverrideDefaultFromEnvar("GGML_URL").URL()
 
-	queryFlag  = kingpin.Flag("query", "Elasticsearch query string").Short('q').Default(DefaultQuery).String()
-	filterFlag = kingpin.Flag("filter", "Search filter").Short('f').Strings()
+	queryArgs   = kingpin.Arg("query", "Elasticsearch query string").Strings()
+	mustFlag    = kingpin.Flag("must", "Must match").Short('m').Strings()
+	mustNotFlag = kingpin.Flag("must-not", "Must not match").Short('x').Strings()
 
 	startFlag    = kingpin.Flag("start", "Oldest timestamp to match").String()
 	endFlag      = kingpin.Flag("end", "Newest timestamp to match").String()

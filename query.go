@@ -19,15 +19,21 @@ type Query struct {
 	start      *time.Time
 	end        *time.Time
 	query      string
-	filters    []string
+	must       []string
+	mustNot    []string
 	numResults int
 }
 
 func NewQuery() (*Query, error) {
 	q := &Query{
-		query:      *queryFlag,
-		filters:    *filterFlag,
+		query:      strings.Join(*queryArgs, " "),
+		must:       *mustFlag,
+		mustNot:    *mustNotFlag,
 		numResults: *numResultsFlag,
+	}
+
+	if q.query == "" {
+		q.query = DefaultQuery
 	}
 
 	// Normalize duration to a positive interval
@@ -83,16 +89,24 @@ func (q *Query) Index() string {
 }
 
 func (q *Query) Query() elastic.Query {
-	andFilter := elastic.NewAndFilter(
+	qs := elastic.NewQueryStringQuery(q.query)
+
+	filt := elastic.NewBoolFilter().Must(
 		elastic.NewRangeFilter("@timestamp").
 			From(q.start.Unix() * 1000).
 			To(q.end.Unix() * 1000))
-	for _, query := range q.filters {
-		andFilter = andFilter.Add(elastic.NewQueryFilter(
-			elastic.NewQueryStringQuery(query)).Cache(true))
+
+	for _, must := range q.must {
+		filt = filt.Must(elastic.NewQueryFilter(
+			elastic.NewQueryStringQuery(must)).Cache(true))
 	}
-	return elastic.NewFilteredQuery(elastic.NewQueryStringQuery(q.query)).
-		Filter(elastic.NewBoolFilter().Must(andFilter))
+
+	for _, mustNot := range q.mustNot {
+		filt = filt.MustNot(elastic.NewQueryFilter(
+			elastic.NewQueryStringQuery(mustNot)).Cache(true))
+	}
+
+	return elastic.NewFilteredQuery(qs).Filter(filt)
 }
 
 func (q *Query) Search(client *elastic.Client) (*elastic.SearchResult, error) {
