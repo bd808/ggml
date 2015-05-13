@@ -37,6 +37,18 @@ Some settings can be provided via environment variables:
 * `GGML_URL`: Server URL
 * `GGML_OUTPUT`: Output format
 
+Examples:
+```
+# Custom output format for a specific event type
+$ export GGML_OUTPUT="{@timestamp} {level} {channel} {host} {wiki} - {message}"
+
+# Query string
+$ ggml type:mediawiki AND NOT channel:api-feature-usage AND host:mw1070
+
+# With must/mustNot filters (filters are cached by Elastcisearch)
+$ ggml -m type:mediawiki -x channel:api-feature-usage -m host:mw1070
+```
+
 License
 -------
 
