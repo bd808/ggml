@@ -20,6 +20,7 @@ Flags:
   --start=START       Oldest timestamp to match
   --end=END           Newest timestamp to match
   -d, --duration=15m  Width of timestamp window
+  -t, --tail          Tail event stream
   -n, --num=100       Number of results to fetch
   --index-format="logstash-%Y.%m.%d"
                       Index name format

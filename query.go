@@ -22,9 +22,10 @@ type Query struct {
 	must       []string
 	mustNot    []string
 	numResults int
+	scrollId   string
 }
 
-func NewQuery() (*Query, error) {
+func NewBaseQuery() (*Query, error) {
 	q := &Query{
 		query:      strings.Join(*queryArgs, " "),
 		must:       *mustFlag,
@@ -34,6 +35,14 @@ func NewQuery() (*Query, error) {
 
 	if q.query == "" {
 		q.query = DefaultQuery
+	}
+	return q, nil
+}
+
+func NewSearchQuery() (*Query, error) {
+	q, err := NewBaseQuery()
+	if err != nil {
+		return nil, err
 	}
 
 	// Normalize duration to a positive interval
@@ -76,6 +85,17 @@ func NewQuery() (*Query, error) {
 	return q, nil
 }
 
+func NewScrollQuery(since time.Time) (*Query, error) {
+	q, err := NewBaseQuery()
+	if err != nil {
+		return nil, err
+	}
+	q.start = &since
+	now := time.Now().UTC()
+	q.end = &now
+	return q, nil
+}
+
 func (q *Query) Index() string {
 	// TODO: assumes that Logstash rotates index daily
 	var indices []string
@@ -91,10 +111,15 @@ func (q *Query) Index() string {
 func (q *Query) Query() elastic.Query {
 	qs := elastic.NewQueryStringQuery(q.query)
 
-	filt := elastic.NewBoolFilter().Must(
-		elastic.NewRangeFilter("@timestamp").
-			From(q.start.Unix() * 1000).
-			To(q.end.Unix() * 1000))
+	dateRange := elastic.NewRangeFilter("@timestamp").
+		From(q.start.Unix() * 1000)
+	if q.end != nil {
+		dateRange = dateRange.To(q.end.Unix() * 1000)
+	} else {
+		dateRange = dateRange.To(time.Now().UTC().Unix() * 1000)
+	}
+
+	filt := elastic.NewBoolFilter().Must(dateRange)
 
 	for _, must := range q.must {
 		filt = filt.Must(elastic.NewQueryFilter(
@@ -117,4 +142,22 @@ func (q *Query) Search(client *elastic.Client) (*elastic.SearchResult, error) {
 		From(0).Size(q.numResults).
 		Pretty(true).
 		Do()
+}
+
+func (q *Query) Scroll(client *elastic.Client) (*elastic.SearchResult, error) {
+	if q.scrollId == "" {
+		logInfo("Getting scrollId...\n")
+		res, err := client.Scroll().
+			Index(q.Index()).
+			Query(q.Query()).
+			Size(50).
+			Do()
+		if err != nil {
+			return nil, err
+		}
+		q.scrollId = res.ScrollId
+		logInfo("Scroll cursor <%s>: %d results\n", q.scrollId, res.Hits.TotalHits)
+	}
+
+	return client.Scroll().Index(q.Index()).ScrollId(q.scrollId).Size(50).Do()
 }
