@@ -50,6 +50,17 @@ $ ggml type:mediawiki AND NOT channel:api-feature-usage AND host:mw1070
 $ ggml -m type:mediawiki -x channel:api-feature-usage -m host:mw1070
 ```
 
+Build
+-----
+```
+export GOPATH=~/golang # Or any other directory you'd like to use
+mkdir -p $GOPATH
+
+go get github.com/bd808/ggml
+
+$GOPATH/bin/ggml --help
+```
+
 License
 -------
 
