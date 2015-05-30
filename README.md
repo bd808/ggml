@@ -61,6 +61,14 @@ go get github.com/bd808/ggml
 $GOPATH/bin/ggml --help
 ```
 
+Build Debian package
+```
+apt-get install dpkg-dev golang-go
+git clone https://github.com/bd808/ggml.git
+cd ggml
+dpkg-buildpackage -b -us -uc
+```
+
 License
 -------
 
