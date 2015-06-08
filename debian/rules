@@ -1,0 +1,22 @@
+#!/usr/bin/make -f
+export DH_VERBOSE := 1
+export DH_OPTIONS
+export GOPATH := $(CURDIR)/debian/build
+export GOPKG := github.com/bd808/ggml
+export GO := GOPATH=$(GOPATH) go
+
+%:
+	dh $@
+
+override_dh_auto_configure:
+	mkdir -p $(GOPATH)
+
+override_dh_auto_build:
+	$(GO) get -v $(GOPKG)
+
+override_dh_auto_test:
+	$(GO) test -v $(GOPKG)
+
+override_dh_auto_clean:
+	rm -rf $(GOPATH)
+	dh_auto_clean

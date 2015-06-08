@@ -1,0 +1,13 @@
+Source: ggml
+Section: utils
+Priority: extra
+Maintainer: Bryan Davis <bd808@wikimedia.org>
+Build-Depends: debhelper (>= 8.0.0), golang-go (>= 1.1)
+Standards-Version: 3.9.3
+Homepage: https://githug.com/bd808/ggml
+
+Package: ggml
+Architecture: any
+Depends: ${shlibs:Depends}, ${misc:Depends}
+Description: Go Get My Logs
+  Search and display Logstash formatted logs from an Elasticsearch server.
