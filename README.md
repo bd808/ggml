@@ -52,6 +52,8 @@ $ ggml -m type:mediawiki -x channel:api-feature-usage -m host:mw1070
 
 Build
 -----
+You need go version 1.3 or higher to build ggml. Ubuntu precise installs go 1.2 and both build options below
+will fail. So, install from src or a prebuilt binary from https://golang.org/doc/install
 ```
 export GOPATH=~/golang # Or any other directory you'd like to use
 mkdir -p $GOPATH
